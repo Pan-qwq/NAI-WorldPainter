@@ -1,6 +1,6 @@
 # 绘世
 
-绘世是一个基于 Flutter 开发的 Android APK 客户端，用于 NovelAI 图片生成相关功能。
+绘世是一个基于 Flutter 开发的 Android APK 客户端，用于 NovelAI 图片免费小图生成相关功能。
 
 ## APK
 
