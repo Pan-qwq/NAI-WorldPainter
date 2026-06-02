@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:nai_huishi/core/constants/api_constants.dart';
 import 'package:nai_huishi/core/di/injection.dart';
 import 'package:nai_huishi/domain/entities/api_endpoint.dart';
 import 'package:nai_huishi/domain/entities/generation_task.dart';
@@ -709,10 +710,10 @@ class _OfficialApiTabState extends State<_OfficialApiTab> {
               TextField(
                 controller: _keyCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'pst-xxxxxxxxxxxxxxxxxxxx',
                   isDense: true,
-                  prefixIcon: Icon(CupertinoIcons.key, size: 18),
+                  prefixIcon: const Icon(CupertinoIcons.lock, size: 18),
                 ),
                 onChanged: (v) => _vm.setNovelAiOfficialApiKey(v.trim()),
               ),

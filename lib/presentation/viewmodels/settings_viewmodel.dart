@@ -332,9 +332,7 @@ class SettingsViewModel extends ChangeNotifier {
   Future<bool> testConnectionOfficial({
     required String apiKey,
   }) async {
-    return _manageSettings.testConnectionOfficial(
-      apiKey: apiKey,
-    );
+    return _manageSettings.testConnectionOfficial(apiKey);
   }
 
   /// 测试连接
