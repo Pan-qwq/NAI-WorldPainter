@@ -1614,10 +1614,12 @@ class _GeneratePageState extends State<GeneratePage> {
                       case ImageProviderType.gpt:
                         tag = '[GPT] ';
                       case ImageProviderType.nanoBanana:
-                        tag = '[Nano] ';
-                      case ImageProviderType.novelAi:
-                        tag = '';
-                    }
+        tag = '[Nano] ';
+      case ImageProviderType.novelAi:
+        tag = '';
+      case ImageProviderType.novelAiOfficial:
+        tag = '[Official] ';
+      }
                     final epName = (opt.endpointName != null && opt.endpointName!.isNotEmpty)
                         ? '[${opt.endpointName}] '
                         : '';

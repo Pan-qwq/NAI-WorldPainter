@@ -78,6 +78,7 @@ class GenerationViewModel extends ChangeNotifier {
 
   bool get isGptProvider => currentProvider == ImageProviderType.gpt;
   bool get isNanoProvider => currentProvider == ImageProviderType.nanoBanana;
+  bool get isOfficialProvider => currentProvider == ImageProviderType.novelAiOfficial;
   bool get isNonNovelAiProvider => isGptProvider || isNanoProvider;
 
   List<String> get availableResolutions {
@@ -249,6 +250,15 @@ class GenerationViewModel extends ChangeNotifier {
           provider: ImageProviderType.gpt,
         ));
       }
+    }
+
+    // NovelAI 官方 — 硬编码已知模型列表
+    for (final m in ApiConstants.naiOfficialModels) {
+      options.add(ImageModelOption(
+        modelId: m,
+        displayName: m,
+        provider: ImageProviderType.novelAiOfficial,
+      ));
     }
 
     // Nano Banana — 同上
@@ -823,11 +833,12 @@ class GenerationViewModel extends ChangeNotifier {
         break;
       }
     }
-    selectedModel = matched ?? switch (task.providerType) {
-      ImageProviderType.gpt => 'gpt:${task.model}',
-      ImageProviderType.nanoBanana => 'nano:${task.model}',
-      ImageProviderType.novelAi => task.model,
-    };
+selectedModel = matched ?? switch (task.providerType) {
+        ImageProviderType.gpt => 'gpt:${task.model}',
+        ImageProviderType.nanoBanana => 'nano:${task.model}',
+        ImageProviderType.novelAi => task.model,
+        ImageProviderType.novelAiOfficial => task.model,
+      };
     selectedResolution = task.size ?? '${task.width}x${task.height}';
     scale = task.scale;
     cfgRescale = task.cfgRescale;

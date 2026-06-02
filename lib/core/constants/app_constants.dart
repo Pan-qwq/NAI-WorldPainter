@@ -221,6 +221,9 @@ class AppConstants {
   static const String keyImageProviderNanoActiveModel = 'image_provider_nano_active_model_v2';
 
   // 批量生成
+  // ===== NovelAI 官方 API =====
+  static const String keyNovelAiOfficialApiKey = 'novelai_official_api_key';
+
   static const String keyBatchCount = 'batch_count_draft';
 
   // 任务状态

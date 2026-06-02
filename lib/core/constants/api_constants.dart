@@ -98,4 +98,23 @@ class ApiConstants {
   static const int defaultSteps = 28;
   static const int defaultInpaintingSteps = 23;
   static const String defaultResolution = '832x1216';
+
+  // ===== NovelAI 官方 API =====
+  static const String naiOfficialBaseUrl = 'https://image.novelai.net';
+  static const String naiOfficialTxt2Img = '/ai/generate-image';
+  static const String naiOfficialImg2Img = '/ai/generate-image';
+  static const String naiOfficialUpload = '/ai/upload-image';
+
+  /// NovelAI 官方 API 支持的模型（不含中转站自定义模型）
+  static const List<String> naiOfficialModels = [
+    'nai-diffusion-4-5-curated',
+    'nai-diffusion-4-5-full',
+    'nai-diffusion-4-5-anime-curated',
+    'nai-diffusion-4-5-anime-full',
+    'nai-diffusion-4',
+    'nai-diffusion-3',
+    'nai-diffusion-furry-3',
+    'kunoichi-1.1',
+    'vibe-transfer',
+  ];
 }

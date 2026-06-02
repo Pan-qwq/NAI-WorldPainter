@@ -7,6 +7,7 @@ enum GenerationMode {
 
 enum ImageProviderType {
   novelAi,
+  novelAiOfficial,
   gpt,
   nanoBanana,
 }

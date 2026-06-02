@@ -280,6 +280,17 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<ApiEndpoint?> getActiveEndpoint(ImageProviderType p) async =>
       _local.getActiveEndpoint(p);
 
+  // ===== NovelAI 官方 API =====
+  @override
+  Future<String?> getNovelAiOfficialApiKey() async => _local.getNovelAiOfficialApiKey();
+  @override
+  Future<void> setNovelAiOfficialApiKey(String value) => _local.setNovelAiOfficialApiKey(value);
+  @override
+  Future<bool> testConnectionOfficial(String apiKey, {String? proxyHost, int? proxyPort}) async {
+    if (_apiService == null) return false;
+    return _apiService!.testConnectionOfficial(apiKey);
+  }
+
   // ===== 批量生成 =====
   @override
   Future<int> getBatchCount() async => _local.getBatchCount();

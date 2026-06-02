@@ -224,6 +224,9 @@ class SettingsLocalDatasource {
           activeId: AppConstants.keyImageProviderNanoActiveEndpointId,
           activeModel: AppConstants.keyImageProviderNanoActiveModel,
         );
+      case ImageProviderType.novelAiOfficial:
+        // 官方直连无中转站配置
+        return (endpoints: '', activeId: '', activeModel: '');
     }
   }
 
@@ -275,6 +278,9 @@ class SettingsLocalDatasource {
         oldKey = getImageProviderNanoApiKey();
         oldModel = getImageProviderNanoModel();
         break;
+      case ImageProviderType.novelAiOfficial:
+        // 官方直连无旧 v1 单值可迁移
+        return null;
     }
     if (oldUrl.isEmpty && (oldKey == null || oldKey.isEmpty) && oldModel.isEmpty) {
       return null;
@@ -330,6 +336,11 @@ class SettingsLocalDatasource {
     }
     return list.first;
   }
+
+  // ===== NovelAI 官方 API =====
+  String? getNovelAiOfficialApiKey() => _prefs.getString(AppConstants.keyNovelAiOfficialApiKey);
+  Future<void> setNovelAiOfficialApiKey(String value) async =>
+      _prefs.setString(AppConstants.keyNovelAiOfficialApiKey, value);
 
   // 批量生成数量
   int getBatchCount() => _prefs.getInt(AppConstants.keyBatchCount) ?? 1;

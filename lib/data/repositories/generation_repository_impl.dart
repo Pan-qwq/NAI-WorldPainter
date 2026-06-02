@@ -32,6 +32,8 @@ class GenerationRepositoryImpl implements GenerationRepository {
         return _submitNano(task);
       case ImageProviderType.novelAi:
         return _submitNovelAi(task);
+      case ImageProviderType.novelAiOfficial:
+        return _submitNovelAiOfficial(task);
     }
   }
 
@@ -56,6 +58,11 @@ class GenerationRepositoryImpl implements GenerationRepository {
         legacyUrl = await _settingsRepo.getImageProviderNanoBaseUrl();
         legacyKey = await _settingsRepo.getImageProviderNanoApiKey();
         break;
+      case ImageProviderType.novelAiOfficial:
+        // 官方直连不使用中转站，空值由 _submitNovelAiOfficial 单独处理
+        legacyUrl = '';
+        legacyKey = '';
+        break;
     }
     return (apiKey: legacyKey ?? '', baseUrl: legacyUrl);
   }
@@ -73,6 +80,18 @@ class GenerationRepositoryImpl implements GenerationRepository {
       return _apiService.inpaintImage(task, creds.apiKey, creds.baseUrl);
     }
     return _apiService.generateImage(task, creds.apiKey, creds.baseUrl);
+  }
+
+  Future<GenerationTask> _submitNovelAiOfficial(GenerationTask task) async {
+    final apiKey = await _settingsRepo.getNovelAiOfficialApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw ApiException(message: '请先在设置中配置 NovelAI 官方 API Key', code: 'NO_API_KEY');
+    }
+
+    if (task.mode == GenerationMode.inpainting) {
+      return _apiService.img2imgOfficial(task, apiKey);
+    }
+    return _apiService.generateImageOfficial(task, apiKey);
   }
 
   Future<GenerationTask> _submitGpt(GenerationTask task) async {

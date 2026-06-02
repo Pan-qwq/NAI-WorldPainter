@@ -139,6 +139,11 @@ abstract class SettingsRepository {
   Future<void> setActiveModel(ImageProviderType p, String? model);
   Future<ApiEndpoint?> getActiveEndpoint(ImageProviderType p);
 
+  // ===== NovelAI 官方 API =====
+  Future<String?> getNovelAiOfficialApiKey();
+  Future<void> setNovelAiOfficialApiKey(String value);
+  Future<bool> testConnectionOfficial(String apiKey, {String? proxyHost, int? proxyPort});
+
   // 批量生成
   Future<int> getBatchCount();
   Future<void> setBatchCount(int value);

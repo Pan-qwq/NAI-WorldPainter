@@ -431,6 +431,252 @@ class NovelAiApiService {
     }
   }
 
+  // ──────────── NovelAI 官方 API 直连 ────────────
+
+  /// 文生图（官方原生格式）
+  Future<GenerationTask> generateImageOfficial(
+    GenerationTask task,
+    String apiKey,
+  ) async {
+    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+
+    try {
+      final body = _buildOfficialBody(task);
+      final response = await _dio.post(
+        ApiConstants.naiOfficialTxt2Img,
+        data: body,
+        options: Options(
+          receiveTimeout: const Duration(minutes: 5),
+          sendTimeout: const Duration(minutes: 1),
+          responseType: ResponseType.bytes, // 官方返回 ZIP 二进制
+        ),
+      );
+
+      return await _parseOfficialImageResponse(response.data, task);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: _handleDioError(e),
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// 图生图 / 局部重绘（官方原生格式）
+  Future<GenerationTask> img2imgOfficial(
+    GenerationTask task,
+    String apiKey,
+  ) async {
+    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+
+    try {
+      // 先上传原图
+      final sourceBytes = await File(task.sourceImagePath!).readAsBytes();
+      final uploadUuid = await _uploadImageOfficial(sourceBytes, apiKey);
+
+      String? maskUuid;
+      if (task.maskImagePath != null) {
+        final maskBytes = await File(task.maskImagePath!).readAsBytes();
+        maskUuid = await _uploadImageOfficial(maskBytes, apiKey);
+      }
+
+      final body = _buildOfficialBody(task, imageUuid: uploadUuid, maskUuid: maskUuid);
+      final response = await _dio.post(
+        ApiConstants.naiOfficialImg2Img,
+        data: body,
+        options: Options(
+          receiveTimeout: const Duration(minutes: 5),
+          sendTimeout: const Duration(minutes: 2),
+          responseType: ResponseType.bytes,
+        ),
+      );
+
+      return await _parseOfficialImageResponse(response.data, task);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: _handleDioError(e),
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// 上传图片到 NAI 官方，返回 uuid
+  Future<String> _uploadImageOfficial(List<int> imageBytes, String apiKey) async {
+    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+
+    final formData = FormData.fromMap({
+      'image': MultipartFile.fromBytes(imageBytes, filename: 'image.png'),
+    });
+
+    final response = await _dio.post(
+      ApiConstants.naiOfficialUpload,
+      data: formData,
+      options: Options(
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+
+    final data = response.data as Map<String, dynamic>;
+    return data['uuid'] as String;
+  }
+
+  /// 构建 NAI 官方请求体
+  Map<String, dynamic> _buildOfficialBody(
+    GenerationTask task, {
+    String? imageUuid,
+    String? maskUuid,
+  }) {
+    // NAI 官方 API 使用 action / legacy 两种模式
+    // 这里使用 legacy 模式，兼容性更好
+    final params = <String, dynamic>{
+      'width': task.width,
+      'height': task.height,
+      'scale': task.scale,
+      'cfg_rescale': task.cfgRescale,
+      'sampler': task.sampler,
+      'noise_schedule': task.noiseSchedule,
+      'steps': task.mode == GenerationMode.inpainting
+          ? ApiConstants.defaultInpaintingSteps
+          : ApiConstants.defaultSteps,
+      'n_samples': 1,
+      if (task.seed != null) 'seed': task.seed,
+      if (task.negativePrompt != null && task.negativePrompt!.isNotEmpty)
+        'negative_prompt': task.negativePrompt,
+    };
+
+    if (imageUuid != null) {
+      params['image'] = imageUuid;
+      params['strength'] = task.inpaintStrength ?? 0.7;
+    }
+    if (maskUuid != null) {
+      params['mask'] = maskUuid;
+    }
+
+    // legacy 模式：input 为纯文本 prompt
+    return {
+      'input': task.prompt,
+      'model': task.model,
+      'action': 'generate',
+      'parameters': params,
+      'prefer_brownian': true,
+      'quality_toggle': true,
+    };
+  }
+
+  /// 解析官方 API 响应（ZIP → PNG）
+  Future<GenerationTask> _parseOfficialImageResponse(
+    List<int> bytes,
+    GenerationTask originalTask,
+  ) async {
+    try {
+      // NAI 官方返回 ZIP 包
+      // 尝试从 ZIP/GZip 中提取第一张 PNG
+      // 方法1：直接查找 PNG magic（更可靠）
+      const pngMagic = [0x89, 0x50, 0x4E, 0x47]; // PNG 文件头
+      int pngStart = -1;
+      for (int i = 0; i < bytes.length - 4; i++) {
+        if (bytes[i] == pngMagic[0] &&
+            bytes[i + 1] == pngMagic[1] &&
+            bytes[i + 2] == pngMagic[2] &&
+            bytes[i + 3] == pngMagic[3]) {
+          pngStart = i;
+          break;
+        }
+      }
+
+      if (pngStart >= 0) {
+        final pngData = bytes.sublist(pngStart);
+        final filename = ImageUtils.generateFilename();
+        final dir = await ImageUtils.getImageDirectory();
+        final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+        await File(filePath).writeAsBytes(pngData, flush: true);
+        return originalTask.copyWith(
+          status: 'success',
+          imagePath: filePath,
+          completedAt: DateTime.now(),
+        );
+      }
+
+      // 方法2：尝试 GZip 解压（NAI 有时返回 gzip 而非 ZIP）
+      try {
+        final gunzipped = GZipCodec().decode(bytes);
+        // 在解压后的数据中查找 PNG magic
+        for (int i = 0; i < gunzipped.length - 4; i++) {
+          if (gunzipped[i] == pngMagic[0] &&
+              gunzipped[i + 1] == pngMagic[1] &&
+              gunzipped[i + 2] == pngMagic[2] &&
+              gunzipped[i + 3] == pngMagic[3]) {
+            final pngData = gunzipped.sublist(i);
+            final filename = ImageUtils.generateFilename();
+            final dir = await ImageUtils.getImageDirectory();
+            final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+            await File(filePath).writeAsBytes(pngData, flush: true);
+            return originalTask.copyWith(
+              status: 'success',
+              imagePath: filePath,
+              completedAt: DateTime.now(),
+            );
+          }
+        }
+      } catch (_) {
+        // GZip 解压失败，继续
+      }
+
+      // 方法3：直接保存（可能是原始 PNG）
+      if (bytes.length > 100) {
+        final filename = ImageUtils.generateFilename();
+        final dir = await ImageUtils.getImageDirectory();
+        final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+        await File(filePath).writeAsBytes(bytes, flush: true);
+        return originalTask.copyWith(
+          status: 'success',
+          imagePath: filePath,
+          completedAt: DateTime.now(),
+        );
+      }
+
+      throw Exception('无法从官方 API 响应中提取图片数据');
+    } catch (e) {
+      return originalTask.copyWith(
+        status: 'failed',
+        errorMessage: '解析官方 API 响应失败: $e',
+        completedAt: DateTime.now(),
+      );
+    }
+  }
+
+  /// 测试 NAI 官方连接
+  Future<bool> testConnectionOfficial(String apiKey) async {
+    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+    try {
+      final response = await _dio.post(
+        ApiConstants.naiOfficialTxt2Img,
+        data: {
+          'input': 'test',
+          'model': 'nai-diffusion-4-5-curated',
+          'action': 'generate',
+          'parameters': {
+            'width': 832,
+            'height': 1216,
+            'scale': 5.0,
+            'steps': 1,
+            'n_samples': 1,
+          },
+        },
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          responseType: ResponseType.bytes,
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ──────────── 已有方法 ────────────
+
   String _handleDioError(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
