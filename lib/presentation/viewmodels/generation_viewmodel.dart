@@ -84,22 +84,25 @@ class GenerationViewModel extends ChangeNotifier {
   List<String> get availableResolutions {
     if (isGptProvider) return ApiConstants.gptSupportedSizes;
     if (isNanoProvider) return ApiConstants.nanoSupportedSizes;
+    if (isOfficialProvider) return ApiConstants.naiOfficialSupportedResolutions.keys.toList();
     return ApiConstants.supportedResolutions.keys.toList();
   }
 
   String resolutionLabel(String value) {
     if (isGptProvider) return ApiConstants.gptSizeLabels[value] ?? value;
     if (isNanoProvider) return ApiConstants.nanoSizeLabels[value] ?? value;
-    switch (value) {
-      case '832x1216':
-        return '纵向 832×1216';
-      case '1216x832':
-        return '横向 1216×832';
-      case '1024x1024':
-        return '方形 1024×1024';
-      default:
-        return value;
+    // 通用标签：根据宽高比自动标注方向
+    final parts = value.split('x');
+    if (parts.length == 2) {
+      final w = int.tryParse(parts[0]);
+      final h = int.tryParse(parts[1]);
+      if (w != null && h != null) {
+        if (w > h) return '横向 $value';
+        if (w < h) return '纵向 $value';
+        return '方形 $value';
+      }
     }
+    return value;
   }
 
   String nanoImageSizeLabel(String value) => ApiConstants.nanoImageSizeLabels[value] ?? value;
@@ -107,6 +110,7 @@ class GenerationViewModel extends ChangeNotifier {
   String get _defaultResolutionForCurrentProvider {
     if (isGptProvider) return ApiConstants.gptSupportedSizes.first;
     if (isNanoProvider) return ApiConstants.nanoSupportedSizes.first;
+    if (isOfficialProvider) return ApiConstants.naiOfficialSupportedResolutions.keys.first;
     return ApiConstants.defaultResolution;
   }
   QueueState? queueState;

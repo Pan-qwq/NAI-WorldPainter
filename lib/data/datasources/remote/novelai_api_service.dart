@@ -553,14 +553,15 @@ class NovelAiApiService {
       params['mask'] = maskUuid;
     }
 
-    // legacy 模式：input 为纯文本 prompt
+    // prefer_brownian / quality_toggle 必须放在 parameters 内部
+    params['prefer_brownian'] = true;
+    params['quality_toggle'] = true;
+
     return {
       'input': task.prompt,
       'model': task.model,
       'action': 'generate',
       'parameters': params,
-      'prefer_brownian': true,
-      'quality_toggle': true,
     };
   }
 
@@ -662,6 +663,8 @@ class NovelAiApiService {
             'scale': 5.0,
             'steps': 1,
             'n_samples': 1,
+            'quality_toggle': false,
+            'prefer_brownian': false,
           },
         },
         options: Options(

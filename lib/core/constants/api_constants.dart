@@ -101,6 +101,37 @@ class ApiConstants {
 
   // ===== NovelAI 官方 API =====
   static const String naiOfficialBaseUrl = 'https://image.novelai.net';
+
+  /// NovelAI 官方 API 支持的画幅（比中转站多得多）
+  static const Map<String, Map<String, int>> naiOfficialSupportedResolutions = {
+    '384x640': {'width': 384, 'height': 640},
+    '512x768': {'width': 512, 'height': 768},
+    '512x1024': {'width': 512, 'height': 1024},
+    '576x960': {'width': 576, 'height': 960},
+    '640x640': {'width': 640, 'height': 640},
+    '640x1152': {'width': 640, 'height': 1152},
+    '768x768': {'width': 768, 'height': 768},
+    '768x1152': {'width': 768, 'height': 1152},
+    '768x1280': {'width': 768, 'height': 1280},
+    '832x1088': {'width': 832, 'height': 1088},
+    '832x1216': {'width': 832, 'height': 1216},
+    '864x1152': {'width': 864, 'height': 1152},
+    '864x1536': {'width': 864, 'height': 1536},
+    '896x1152': {'width': 896, 'height': 1152},
+    '896x1280': {'width': 896, 'height': 1280},
+    '1088x832': {'width': 1088, 'height': 832},
+    '1152x768': {'width': 1152, 'height': 768},
+    '1152x864': {'width': 1152, 'height': 864},
+    '1152x896': {'width': 1152, 'height': 896},
+    '1216x832': {'width': 1216, 'height': 832},
+    '1280x768': {'width': 1280, 'height': 768},
+    '1280x896': {'width': 1280, 'height': 896},
+    '1536x640': {'width': 1536, 'height': 640},
+    '1536x864': {'width': 1536, 'height': 864},
+    '1536x1024': {'width': 1536, 'height': 1024},
+    '1024x1024': {'width': 1024, 'height': 1024},
+    '1024x1536': {'width': 1024, 'height': 1536},
+  };
   static const String naiOfficialTxt2Img = '/ai/generate-image';
   static const String naiOfficialImg2Img = '/ai/generate-image';
   static const String naiOfficialUpload = '/ai/upload-image';
