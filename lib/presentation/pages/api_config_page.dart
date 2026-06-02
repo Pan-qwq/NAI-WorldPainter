@@ -27,7 +27,7 @@ class _ApiConfigPageState extends State<ApiConfigPage> with SingleTickerProvider
     super.initState();
     _vm = sl<SettingsViewModel>();
     _vm.addListener(_onVmChanged);
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     // 总是再 reload 一次，避免单例 vm 先前 loadSettings 时机太早导致 prefs 未就绪
     _reload();
   }
@@ -59,6 +59,7 @@ class _ApiConfigPageState extends State<ApiConfigPage> with SingleTickerProvider
             Tab(text: 'NovelAI'),
             Tab(text: 'GPT'),
             Tab(text: 'Nano Banana'),
+            Tab(text: 'Official'),
           ],
         ),
       ),
@@ -70,6 +71,7 @@ class _ApiConfigPageState extends State<ApiConfigPage> with SingleTickerProvider
                 _ProviderTab(provider: ImageProviderType.novelAi),
                 _ProviderTab(provider: ImageProviderType.gpt),
                 _ProviderTab(provider: ImageProviderType.nanoBanana),
+                const _OfficialApiTab(),
               ],
             ),
     );
@@ -617,4 +619,218 @@ Future<void> _showEditDialog(
   urlCtrl.dispose();
   keyCtrl.dispose();
   modelInputCtrl.dispose();
+}
+
+// ═══════════════════════════════════════════════════
+// NovelAI 官方 API 直连配置 Tab
+// ═══════════════════════════════════════════════════
+
+class _OfficialApiTab extends StatefulWidget {
+  const _OfficialApiTab();
+
+  @override
+  State<_OfficialApiTab> createState() => _OfficialApiTabState();
+}
+
+class _OfficialApiTabState extends State<_OfficialApiTab> {
+  late final SettingsViewModel _vm;
+  late final TextEditingController _keyCtrl;
+  bool _isTesting = false;
+  bool? _testResult;
+  String? _testError;
+
+  @override
+  void initState() {
+    super.initState();
+    _vm = sl<SettingsViewModel>();
+    _vm.addListener(_onChange);
+    _keyCtrl = TextEditingController(text: _vm.novelAiOfficialApiKey ?? '');
+  }
+
+  void _onChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _vm.removeListener(_onChange);
+    _keyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+      children: [
+        // 说明卡片
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C21),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+          child: Row(
+            children: [
+              const Icon(CupertinoIcons.info, size: 24, color: Colors.white54),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('直连 NovelAI 官方 API',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    SizedBox(height: 4),
+                    Text('需要 pst-xxx 格式的 Subscription Key，\n无需中转站，直接连接 image.novelai.net',
+                        style: TextStyle(fontSize: 11, color: Colors.white54)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // API Key
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C21),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('API Key（pst-xxx）',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _keyCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  hintText: 'pst-xxxxxxxxxxxxxxxxxxxx',
+                  isDense: true,
+                  prefixIcon: Icon(CupertinoIcons.key, size: 18),
+                ),
+                onChanged: (v) => _vm.setNovelAiOfficialApiKey(v.trim()),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 模型选择（硬编码 NAI 官方支持列表）
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C21),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('模型', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ApiConstants.naiOfficialModels.map((m) {
+                  final isActive = _vm.novelAiOfficialModel == m;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => _vm.setNovelAiOfficialModel(m),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isActive
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Text(
+                        m,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isActive ? Colors.white : Colors.white70,
+                          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 测试连接
+        OutlinedButton.icon(
+          onPressed: _isTesting ? null : _runTest,
+          icon: _isTesting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(CupertinoIcons.wifi, size: 16),
+          label: Text(_isTesting ? '测试中…' : '测试连接'),
+        ),
+        if (_testResult == true) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(CupertinoIcons.checkmark_circle_fill,
+                  size: 14, color: Colors.greenAccent.shade400),
+              const SizedBox(width: 6),
+              Text('连接成功', style: TextStyle(fontSize: 12, color: Colors.greenAccent.shade400)),
+            ],
+          ),
+        ],
+        if (_testError != null) ...[
+          const SizedBox(height: 8),
+          Text(_testError!, style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _runTest() async {
+    final key = _keyCtrl.text.trim();
+    if (key.isEmpty) {
+      setState(() {
+        _testResult = null;
+        _testError = '请先输入 API Key';
+      });
+      return;
+    }
+    setState(() {
+      _isTesting = true;
+      _testResult = null;
+      _testError = null;
+    });
+
+    final ok = await _vm.testConnectionOfficial(
+      apiKey: key,
+    );
+
+    setState(() {
+      _isTesting = false;
+      if (ok) {
+        _testResult = true;
+        _testError = null;
+      } else {
+        _testResult = false;
+        _testError = '无法连接到 NovelAI 官方 API，\n请检查 Key 是否正确或网络是否开启 VPN';
+      }
+    });
+  }
 }

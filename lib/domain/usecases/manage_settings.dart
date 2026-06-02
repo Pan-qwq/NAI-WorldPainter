@@ -141,6 +141,12 @@ class ManageSettingsUseCase {
   Future<void> setActiveModel(ImageProviderType p, String? model) => _repo.setActiveModel(p, model);
   Future<ApiEndpoint?> getActiveEndpoint(ImageProviderType p) => _repo.getActiveEndpoint(p);
 
+  // ===== NovelAI 官方 API =====
+  Future<String?> getNovelAiOfficialApiKey() => _repo.getNovelAiOfficialApiKey();
+  Future<void> setNovelAiOfficialApiKey(String value) => _repo.setNovelAiOfficialApiKey(value);
+  Future<bool> testConnectionOfficial(String apiKey, {String? proxyHost, int? proxyPort}) =>
+      _repo.testConnectionOfficial(apiKey, proxyHost: proxyHost, proxyPort: proxyPort);
+
   // 批量生成
   Future<int> getBatchCount() => _repo.getBatchCount();
   Future<void> setBatchCount(int value) => _repo.setBatchCount(value);

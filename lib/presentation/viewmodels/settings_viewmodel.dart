@@ -32,6 +32,10 @@ class SettingsViewModel extends ChangeNotifier {
   String? _nanoApiKey;
   String _nanoModel = '';
 
+  // NovelAI 官方 API
+  String? _novelAiOfficialApiKey;
+  String _novelAiOfficialModel = 'nai-diffusion-4-5-curated';
+
   // v2 多中转站
   Map<ImageProviderType, List<ApiEndpoint>> _endpoints = {
     ImageProviderType.novelAi: const [],
@@ -69,6 +73,10 @@ class SettingsViewModel extends ChangeNotifier {
   String get nanoBaseUrl => _nanoBaseUrl;
   String? get nanoApiKey => _nanoApiKey;
   String get nanoModel => _nanoModel;
+
+  // NovelAI 官方
+  String? get novelAiOfficialApiKey => _novelAiOfficialApiKey;
+  String get novelAiOfficialModel => _novelAiOfficialModel;
 
   // v2 多中转站访问器
   List<ApiEndpoint> endpoints(ImageProviderType p) =>
@@ -108,6 +116,9 @@ class SettingsViewModel extends ChangeNotifier {
     _nanoBaseUrl = await _manageSettings.getImageProviderNanoBaseUrl();
     _nanoApiKey = await _manageSettings.getImageProviderNanoApiKey();
     _nanoModel = await _manageSettings.getImageProviderNanoModel();
+
+    // 加载 NovelAI 官方
+    _novelAiOfficialApiKey = await _manageSettings.getNovelAiOfficialApiKey();
 
     // 加载 v2 多中转站
     await _reloadEndpoints();
@@ -304,6 +315,26 @@ class SettingsViewModel extends ChangeNotifier {
     await _manageSettings.setImageProviderNanoModel(value);
     _nanoModel = value;
     notifyListeners();
+  }
+
+  // ===== NovelAI 官方 API =====
+  Future<void> setNovelAiOfficialApiKey(String value) async {
+    await _manageSettings.setNovelAiOfficialApiKey(value);
+    _novelAiOfficialApiKey = value;
+    notifyListeners();
+  }
+
+  Future<void> setNovelAiOfficialModel(String value) async {
+    _novelAiOfficialModel = value;
+    notifyListeners();
+  }
+
+  Future<bool> testConnectionOfficial({
+    required String apiKey,
+  }) async {
+    return _manageSettings.testConnectionOfficial(
+      apiKey: apiKey,
+    );
   }
 
   /// 测试连接
