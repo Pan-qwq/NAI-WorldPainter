@@ -761,6 +761,15 @@ class NovelAiApiService {
     }
   }
 
+  /// 记录官方 API 日志
+  void _addLog(String msg) {
+    final ts = DateTime.now().toIso8601String();
+    officialLogs.add('[$ts] $msg');
+    if (officialLogs.length > _maxLogs) {
+      officialLogs.removeAt(0);
+    }
+  }
+
   /// 查询 NovelAI 订阅 Anlas 余额
   Future<int> fetchAnlasBalance(String apiKey) async {
     _configureOfficialAuth(apiKey);

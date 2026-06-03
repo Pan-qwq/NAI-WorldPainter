@@ -72,7 +72,7 @@ class GenerationTask extends Equatable {
     this.providerType = ImageProviderType.novelAi,
     this.gptImagePaths,
     this.nanoImageSize,
-    this.steps = ApiConstants.defaultSteps,
+    this.steps = 28,
   });
 
   GenerationTask copyWith({
