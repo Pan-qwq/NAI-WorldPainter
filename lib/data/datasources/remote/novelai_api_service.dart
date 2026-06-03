@@ -468,6 +468,7 @@ class NovelAiApiService {
           receiveTimeout: const Duration(minutes: 5),
           sendTimeout: const Duration(minutes: 1),
           responseType: ResponseType.bytes, // 官方返回 ZIP 二进制
+          headers: {'Accept': 'application/zip'},
         ),
       );
 
@@ -507,6 +508,7 @@ class NovelAiApiService {
           receiveTimeout: const Duration(minutes: 5),
           sendTimeout: const Duration(minutes: 2),
           responseType: ResponseType.bytes,
+          headers: {'Accept': 'application/zip'},
         ),
       );
 

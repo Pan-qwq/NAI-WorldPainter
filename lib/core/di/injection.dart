@@ -97,7 +97,7 @@ Future<void> configureDependencies() async {
     saveImage: sl<SaveImageUseCase>(),
     queue: sl<GenerationQueue>(),
   ));
-  sl.registerFactory<HistoryViewModel>(() => HistoryViewModel(sl<GetHistoryUseCase>()));
+  sl.registerLazySingleton<HistoryViewModel>(() => HistoryViewModel(sl<GetHistoryUseCase>()));
   sl.registerFactory<PresetViewModel>(() => PresetViewModel(sl<ManagePresetsUseCase>()));
   sl.registerFactory<PromptTemplateViewModel>(() => PromptTemplateViewModel(sl<ManagePromptTemplatesUseCase>()));
   sl.registerLazySingleton<SettingsViewModel>(() => SettingsViewModel(sl<ManageSettingsUseCase>()));

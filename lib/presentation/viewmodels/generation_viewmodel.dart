@@ -14,6 +14,7 @@ import 'package:nai_huishi/domain/usecases/manage_settings.dart';
 import 'package:nai_huishi/domain/usecases/save_image.dart';
 import 'package:nai_huishi/domain/repositories/generation_repository.dart';
 import 'package:uuid/uuid.dart';
+import 'package:nai_huishi/presentation/viewmodels/history_viewmodel.dart';
 
 /// 生图页模型选项（聚合多供应商）
 class ImageModelOption {
@@ -193,6 +194,8 @@ class GenerationViewModel extends ChangeNotifier {
             selectedResultTaskId = task.taskId;
           }
         }
+        // 生成完成时刷新历史画廊
+        sl<HistoryViewModel>().loadHistory(refresh: true);
         errorMessage = null;
       } else if (task.status == 'failed') {
         errorMessage = task.errorMessage;
