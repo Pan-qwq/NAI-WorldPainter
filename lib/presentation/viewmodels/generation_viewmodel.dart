@@ -198,16 +198,17 @@ class GenerationViewModel extends ChangeNotifier {
     _listenQueue();
   }
 
-  /// 加载官方 Anlas 余额
-  Future<void> loadAnlasBalance() async {
-    if (!isOfficialProvider) return;
+  /// 加载官方 Anlas 余额，返回余额值
+  Future<int> loadAnlasBalance() async {
+    if (!isOfficialProvider) return -1;
     final key = await _manageSettings.getNovelAiOfficialApiKey();
-    if (key == null || key.isEmpty) return;
+    if (key == null || key.isEmpty) return -1;
     final balance = await _manageSettings.fetchAnlasBalance(key);
     if (balance >= 0) {
       currentAnlasBalance = balance;
       notifyListeners();
     }
+    return balance;
   }
 
   Future<void> _loadDefaults() async {
@@ -363,6 +364,8 @@ class GenerationViewModel extends ChangeNotifier {
     }
     await _ensureResolutionForCurrentProvider();
     notifyListeners();
+    // 加载余额（仅在官方模型时生效）
+    loadAnlasBalance();
   }
 
   Future<void> updatePrompt(String value) async {
@@ -737,8 +740,11 @@ class GenerationViewModel extends ChangeNotifier {
     );
 
     errorMessage = null;
-    // 记录生成前余额
+    // 记录生成前余额 — 如果还没加载过则先加载
     if (isOfficialProvider) {
+      if (currentAnlasBalance == null) {
+        await loadAnlasBalance();
+      }
       _anlasBalanceBefore = currentAnlasBalance;
     }
     // 重置批次结果区
@@ -780,7 +786,7 @@ class GenerationViewModel extends ChangeNotifier {
       await BackgroundKeepAliveService.instance.release();
       // 生成完成后查询余额变化
       if (isOfficialProvider && _anlasBalanceBefore != null) {
-        final after = await loadAnlasBalance();
+        await loadAnlasBalance();
         if (currentAnlasBalance != null && _anlasBalanceBefore != null) {
           final diff = _anlasBalanceBefore! - currentAnlasBalance!;
           if (diff > 0) lastConsumedAnlas = diff;
