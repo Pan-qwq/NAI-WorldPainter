@@ -776,14 +776,24 @@ class NovelAiApiService {
     try {
       final response = await _officialDio.get(
         ApiConstants.naiOfficialSubscription,
-        options: Options(receiveTimeout: const Duration(seconds: 15)),
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {'Accept': 'application/json'},
+        ),
       );
-      final data = response.data as Map<String, dynamic>;
-      // NAI 返回: {"training": <anlas余额>}
-      return (data['training'] as num?)?.toInt() ?? 0;
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        final balance = (data['training'] as num?)?.toInt() ?? -1;
+        debugPrint('[Anlas余额] 查询成功: $balance');
+        return balance;
+      }
+      debugPrint('[Anlas余额] 响应类型异常: ${data.runtimeType}');
+      return -2;
     } on DioException catch (e) {
-      _addLog('[余额查询失败] ${_handleDioError(e)}');
-      return -1;
+      final errMsg = _handleDioError(e);
+      _addLog('[余额查询失败] $errMsg');
+      debugPrint('[Anlas余额] 请求失败: $errMsg (status=${e.response?.statusCode})');
+      return -3;
     }
   }
 

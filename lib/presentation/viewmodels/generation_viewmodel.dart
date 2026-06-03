@@ -226,6 +226,7 @@ class GenerationViewModel extends ChangeNotifier {
     batchCount = await _manageSettings.getBatchCount();
     selectedSteps = await _manageSettings.getStepsDraft();
     notifyListeners();
+    loadAnlasBalance(); // _loadDefaults 完成后也尝试加载余额
   }
 
   void _listenQueue() {
