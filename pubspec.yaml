@@ -23,6 +23,7 @@ dependencies:
   google_fonts: ^6.2.1
   image_picker: ^1.1.2
   image: ^4.0.0
+  archive: ^4.0.2
   flutter_foreground_task: ^8.10.0
   wakelock_plus: ^1.2.5
 

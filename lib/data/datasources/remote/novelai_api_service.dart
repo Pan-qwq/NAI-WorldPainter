@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:image/image.dart' as img;
 import 'package:nai_huishi/core/constants/api_constants.dart';
@@ -14,6 +15,10 @@ import 'package:nai_huishi/domain/entities/nai_model.dart';
 class NovelAiApiService {
   final Dio _dio;
   final Dio _officialDio;
+
+  /// 官方 API 日志缓冲区（最近 500 条）
+  static final List<String> officialLogs = [];
+  static const int _maxLogs = 500;
 
   NovelAiApiService(this._dio) : _officialDio = createSimpleDio();
 
@@ -622,78 +627,70 @@ class NovelAiApiService {
   }
 
   /// 解析官方 API 响应（ZIP → PNG）
+  /// 从 NAI 官方响应体中提取 PNG 图片
+  /// NAI 官方返回 ZIP 包（Content-Type: application/zip）
   Future<GenerationTask> _parseOfficialImageResponse(
     List<int> bytes,
     GenerationTask originalTask,
   ) async {
     try {
-      // NAI 官方返回 ZIP 包
-      // 尝试从 ZIP/GZip 中提取第一张 PNG
-      // 方法1：直接查找 PNG magic（更可靠）
-      const pngMagic = [0x89, 0x50, 0x4E, 0x47]; // PNG 文件头
-      int pngStart = -1;
-      for (int i = 0; i < bytes.length - 4; i++) {
-        if (bytes[i] == pngMagic[0] &&
-            bytes[i + 1] == pngMagic[1] &&
-            bytes[i + 2] == pngMagic[2] &&
-            bytes[i + 3] == pngMagic[3]) {
-          pngStart = i;
-          break;
-        }
-      }
+      List<int> pngBytes;
 
-      if (pngStart >= 0) {
-        final pngData = bytes.sublist(pngStart);
-        final filename = ImageUtils.generateFilename();
-        final dir = await ImageUtils.getImageDirectory();
-        final filePath = '${dir.path}${Platform.pathSeparator}$filename';
-        await File(filePath).writeAsBytes(pngData, flush: true);
-        return originalTask.copyWith(
-          status: 'success',
-          imagePath: filePath,
-          completedAt: DateTime.now(),
-        );
-      }
-
-      // 方法2：尝试 GZip 解压（NAI 有时返回 gzip 而非 ZIP）
-      try {
-        final gunzipped = GZipCodec().decode(bytes);
-        // 在解压后的数据中查找 PNG magic
-        for (int i = 0; i < gunzipped.length - 4; i++) {
-          if (gunzipped[i] == pngMagic[0] &&
-              gunzipped[i + 1] == pngMagic[1] &&
-              gunzipped[i + 2] == pngMagic[2] &&
-              gunzipped[i + 3] == pngMagic[3]) {
-            final pngData = gunzipped.sublist(i);
-            final filename = ImageUtils.generateFilename();
-            final dir = await ImageUtils.getImageDirectory();
-            final filePath = '${dir.path}${Platform.pathSeparator}$filename';
-            await File(filePath).writeAsBytes(pngData, flush: true);
-            return originalTask.copyWith(
-              status: 'success',
-              imagePath: filePath,
-              completedAt: DateTime.now(),
-            );
+      // 检测 ZIP 格式（PK\x03\x04）
+      if (bytes.length > 4 &&
+          bytes[0] == 0x50 &&
+          bytes[1] == 0x4B &&
+          bytes[2] == 0x03 &&
+          bytes[3] == 0x04) {
+        // 用 archive 包解压 ZIP，提取第一张 PNG
+        final archive = ZipDecoder().decodeBytes(bytes);
+        for (final file in archive) {
+          if (file.isFile && file.name.endsWith('.png')) {
+            pngBytes = file.content.toList();
+            return await _savePng(pngBytes, originalTask);
           }
         }
-      } catch (_) {
-        // GZip 解压失败，继续
+        // ZIP 中没有 PNG 文件
+        throw Exception('ZIP 包中未找到 PNG 文件');
       }
 
-      // 方法3：直接保存（可能是原始 PNG）
-      if (bytes.length > 100) {
-        final filename = ImageUtils.generateFilename();
-        final dir = await ImageUtils.getImageDirectory();
-        final filePath = '${dir.path}${Platform.pathSeparator}$filename';
-        await File(filePath).writeAsBytes(bytes, flush: true);
-        return originalTask.copyWith(
-          status: 'success',
-          imagePath: filePath,
-          completedAt: DateTime.now(),
-        );
+      // 检测 GZip 格式（0x1F 0x8B）
+      if (bytes.length > 2 && bytes[0] == 0x1F && bytes[1] == 0x8B) {
+        final gunzipped = GZipCodec().decode(bytes);
+        // 检查是否解压后是 ZIP
+        if (gunzipped.length > 4 &&
+            gunzipped[0] == 0x50 &&
+            gunzipped[1] == 0x4B &&
+            gunzipped[2] == 0x03 &&
+            gunzipped[3] == 0x04) {
+          final archive = ZipDecoder().decodeBytes(gunzipped);
+          for (final file in archive) {
+            if (file.isFile && file.name.endsWith('.png')) {
+              pngBytes = file.content.toList();
+              return await _savePng(pngBytes, originalTask);
+            }
+          }
+        }
+        // 解压后直接是 PNG
+        if (gunzipped.length > 4 &&
+            gunzipped[0] == 0x89 &&
+            gunzipped[1] == 0x50 &&
+            gunzipped[2] == 0x4E &&
+            gunzipped[3] == 0x47) {
+          return await _savePng(gunzipped, originalTask);
+        }
       }
 
-      throw Exception('无法从官方 API 响应中提取图片数据');
+      // 直接是 PNG
+      if (bytes.length > 4 &&
+          bytes[0] == 0x89 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x4E &&
+          bytes[3] == 0x47) {
+        return await _savePng(bytes, originalTask);
+      }
+
+      throw Exception('无法识别的响应格式 (未找到 ZIP/GZip/PNG 文件头)');
     } catch (e) {
       return originalTask.copyWith(
         status: 'failed',
@@ -701,6 +698,22 @@ class NovelAiApiService {
         completedAt: DateTime.now(),
       );
     }
+  }
+
+  /// 将 PNG 字节保存到文件
+  Future<GenerationTask> _savePng(
+    List<int> pngBytes,
+    GenerationTask task,
+  ) async {
+    final filename = ImageUtils.generateFilename();
+    final dir = await ImageUtils.getImageDirectory();
+    final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+    await File(filePath).writeAsBytes(pngBytes, flush: true);
+    return task.copyWith(
+      status: 'success',
+      imagePath: filePath,
+      completedAt: DateTime.now(),
+    );
   }
 
   /// 测试 NAI 官方连接

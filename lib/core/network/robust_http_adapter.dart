@@ -51,48 +51,73 @@ Dio createSimpleDio() {
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) {
-      debugPrint('[官方Dio] >>> ${options.method} ${options.baseUrl}${options.path}');
-      debugPrint('[官方Dio]     headers: ${options.headers}');
-      if (options.data is Map) {
-        final data = options.data as Map;
-        // 截断过长内容
-        final truncated = data.map((k, v) => MapEntry(k, v is String && v.length > 200 ? '${v.substring(0, 200)}...' : v));
-        debugPrint('[官方Dio]     body: $truncated');
-      }
+      final msg = '[官方Dio] >>> ${options.method} ${options.baseUrl}${options.path}\n'
+          '     headers: ${options.headers}${options.data is Map ? '\n     body: ${_truncateBody(options.data as Map)}' : ''}';
+      debugPrint(msg);
+      _logBuffer.add(msg);
       handler.next(options);
     },
     onResponse: (response, handler) {
-      debugPrint('[官方Dio] <<< ${response.statusCode} (${response.requestOptions.baseUrl}${response.requestOptions.path})');
-      debugPrint('[官方Dio]     headers: ${response.headers}');
+      final msg = '[官方Dio] <<< ${response.statusCode} (${response.requestOptions.baseUrl}${response.requestOptions.path})';
+      debugPrint(msg);
+      _logBuffer.add(msg);
       if (response.data is List<int>) {
-        debugPrint('[官方Dio]     body bytes: ${(response.data as List<int>).length}');
+        final sizeMsg = '     body bytes: ${(response.data as List<int>).length}';
+        debugPrint(sizeMsg);
+        _logBuffer.add(sizeMsg);
       } else if (response.data is Map) {
-        debugPrint('[官方Dio]     body: ${response.data}');
+        final bodyMsg = '     body: ${response.data}';
+        debugPrint(bodyMsg);
+        _logBuffer.add(bodyMsg);
       } else if (response.data is String) {
-        debugPrint('[官方Dio]     body: ${(response.data as String).length > 300 ? '${(response.data as String).substring(0, 300)}...' : response.data}');
+        final s = response.data as String;
+        final bodyMsg = '     body: ${s.length > 300 ? '${s.substring(0, 300)}...' : s}';
+        debugPrint(bodyMsg);
+        _logBuffer.add(bodyMsg);
       }
       handler.next(response);
     },
     onError: (error, handler) {
-      debugPrint('[官方Dio] !!! ${error.type}');
-      debugPrint('[官方Dio]     url: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
-      debugPrint('[官方Dio]     status: ${error.response?.statusCode}');
+      final buf = StringBuffer();
+      buf.writeln('[官方Dio] !!! ${error.type}');
+      buf.writeln('     url: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
+      buf.writeln('     status: ${error.response?.statusCode}');
       if (error.response?.data is List<int>) {
         try {
           final bodyStr = String.fromCharCodes(error.response!.data as List<int>);
-          debugPrint('[官方Dio]     response body: $bodyStr');
+          buf.writeln('     response body: $bodyStr');
         } catch (_) {
-          debugPrint('[官方Dio]     response body bytes: ${(error.response!.data as List<int>).length}');
+          buf.writeln('     response body bytes: ${(error.response!.data as List<int>).length}');
         }
       } else {
-        debugPrint('[官方Dio]     response body: ${error.response?.data}');
+        buf.writeln('     response body: ${error.response?.data}');
       }
-      debugPrint('[官方Dio]     message: ${error.message}');
+      buf.write('     message: ${error.message}');
+      final msg = buf.toString();
+      debugPrint(msg);
+      _logBuffer.add(msg);
       handler.next(error);
     },
   ));
 
   return dio;
+}
+
+/// 日志环形缓冲区
+const int _logBufferMax = 500;
+final List<String> _logBuffer = [];
+
+/// 获取并清空日志快照
+List<String> flushLogBuffer() {
+  final snapshot = List<String>.from(_logBuffer);
+  _logBuffer.clear();
+  return snapshot;
+}
+
+String _truncateBody(Map data) {
+  final truncated = data.map((k, v) =>
+      MapEntry(k, v is String && v.length > 200 ? '${v.substring(0, 200)}...' : v));
+  return truncated.toString();
 }
 
 /// 用 DoH 解析域名，然后 IPv4 优先连接

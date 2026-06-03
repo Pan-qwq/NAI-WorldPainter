@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:nai_huishi/core/constants/api_constants.dart';
 import 'package:nai_huishi/core/di/injection.dart';
+import 'package:nai_huishi/core/network/robust_http_adapter.dart';
 import 'package:nai_huishi/domain/entities/api_endpoint.dart';
 import 'package:nai_huishi/domain/entities/generation_task.dart';
 import 'package:nai_huishi/presentation/viewmodels/settings_viewmodel.dart';
@@ -800,8 +802,43 @@ class _OfficialApiTabState extends State<_OfficialApiTab> {
           const SizedBox(height: 8),
           Text(_testError!, style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
         ],
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: _exportLogs,
+          icon: const Icon(CupertinoIcons.doc_text, size: 16),
+          label: const Text('导出 API 日志'),
+        ),
       ],
     );
+  }
+
+  Future<void> _exportLogs() async {
+    final logs = flushLogBuffer();
+    if (logs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无日志，请先测试连接或生成图片')),
+        );
+      }
+      return;
+    }
+    try {
+      final dir = Directory('/storage/emulated/0/Download');
+      if (!await dir.exists()) await dir.create(recursive: true);
+      final file = File('${dir.path}/nai_official_api_log_${DateTime.now().millisecondsSinceEpoch}.txt');
+      await file.writeAsString(logs.join('\n'));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('日志已导出: ${file.path}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _runTest() async {
