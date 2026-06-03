@@ -788,7 +788,11 @@ class NovelAiApiService {
       );
       final data = response.data;
       if (data is Map<String, dynamic>) {
-        final balance = (data['training'] as num?)?.toInt() ?? -1;
+        // 从 trainingStepsLeft.fixedTrainingStepsLeft 读取余额
+        final stepsLeft = data['trainingStepsLeft'];
+        final balance = (stepsLeft is Map
+            ? (stepsLeft['fixedTrainingStepsLeft'] as num?)?.toInt()
+            : null) ?? -1;
         print('[Anlas余额] 查询成功: $balance');
         return balance;
       }
