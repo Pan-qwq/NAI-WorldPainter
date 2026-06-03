@@ -30,11 +30,11 @@ class NovelAiApiService {
     _officialDio.options.baseUrl = ApiConstants.naiOfficialBaseUrl;
     _officialDio.options.headers['Authorization'] = 'Bearer $apiKey';
     _officialDio.options.headers['Content-Type'] = 'application/json';
-    // 官方 API 返回 ZIP 二进制，告知服务器需要该格式
-    _officialDio.options.headers['Accept'] = 'application/zip';
     // 反滥用校验
     _officialDio.options.headers['Origin'] = 'https://novelai.net';
     _officialDio.options.headers['Referer'] = 'https://novelai.net';
+    // 不设全局 Accept，各请求方法自行设置
+    _officialDio.options.headers.remove('Accept');
   }
 
   String _normalizeBaseUrl(String baseUrl) {
@@ -542,7 +542,9 @@ class NovelAiApiService {
     String? maskUuid,
   }) {
     // NAI 官方 API 使用 action / legacy 两种模式
-    // 这里使用 legacy 模式，兼容性更好
+    // 这里使用 action="generate" 模式
+    final isV4Model = task.model.startsWith('nai-diffusion-4');
+
     final params = <String, dynamic>{
       'width': task.width,
       'height': task.height,
@@ -558,6 +560,46 @@ class NovelAiApiService {
       if (task.negativePrompt != null && task.negativePrompt!.isNotEmpty)
         'negative_prompt': task.negativePrompt,
     };
+
+    if (isV4Model) {
+      // V4 模型必需字段
+      params['params_version'] = 3;
+      params['legacy'] = false;
+      params['legacy_v3_extend'] = false;
+      params['legacy_uc'] = false;
+      params['ucPreset'] = 0;
+      params['v4_prompt'] = {
+        'caption': {
+          'base_caption': task.prompt,
+          'char_captions': [],
+        },
+        'use_coords': true,
+        'use_order': true,
+      };
+      params['v4_negative_prompt'] = {
+        'caption': {
+          'base_caption': task.negativePrompt ?? '',
+          'char_captions': [],
+        },
+        'legacy_uc': false,
+      };
+      params['characterPrompts'] = [];
+      params['reference_image_multiple'] = [];
+      params['reference_information_extracted_multiple'] = [];
+      params['reference_strength_multiple'] = [];
+      params['skip_cfg_above_sigma'] = null;
+      params['sm'] = false;
+      params['sm_dyn'] = false;
+      params['autoSmea'] = false;
+      params['dynamic_thresholding'] = false;
+      params['controlnet_strength'] = 1.0;
+      params['normalize_reference_strength_multiple'] = true;
+      params['add_original_image'] = true;
+      params['use_coords'] = true;
+      params['use_order'] = true;
+      params['inpaintImg2ImgStrength'] = 1;
+      params['deliberate_euler_ancestral_bug'] = false;
+    }
 
     if (imageUuid != null) {
       params['image'] = imageUuid;
@@ -679,6 +721,20 @@ class NovelAiApiService {
             'n_samples': 1,
             'quality_toggle': false,
             'prefer_brownian': false,
+            // V4 必需
+            'params_version': 3,
+            'legacy': false,
+            'ucPreset': 0,
+            'v4_prompt': {
+              'caption': {'base_caption': 'test', 'char_captions': []},
+              'use_coords': true,
+              'use_order': true,
+            },
+            'v4_negative_prompt': {
+              'caption': {'base_caption': '', 'char_captions': []},
+              'legacy_uc': false,
+            },
+            'characterPrompts': [],
           },
         },
         options: Options(
