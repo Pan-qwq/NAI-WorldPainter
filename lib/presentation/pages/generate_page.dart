@@ -1637,6 +1637,33 @@ class _GeneratePageState extends State<GeneratePage> {
           ),
         ),
         const SizedBox(height: 20),
+        // ─── Anlas 余额（仅 Official） ───
+        if (_vm.isOfficialProvider) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_outlined, size: 16, color: Colors.amber),
+                const SizedBox(width: 8),
+                Text('余额: ${_vm.currentAnlasBalance ?? "—"}',
+                    style: const TextStyle(fontSize: 13, color: Colors.amber)),
+                if (_vm.lastConsumedAnlas != null) ...[
+                  const SizedBox(width: 12),
+                  Text('-${_vm.lastConsumedAnlas}',
+                      style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+                  const Text(' (本次消耗)', style: TextStyle(fontSize: 11, color: Colors.white54)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        // ─── 画幅选择 ───
         Row(
           children: [
             const Text('图像尺寸', style: TextStyle(fontSize: 12, color: Colors.white70)),
@@ -1645,27 +1672,66 @@ class _GeneratePageState extends State<GeneratePage> {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
+        // Official 使用分组 UI，其他 provider 使用下拉
+        if (_vm.isOfficialProvider) ...[
+          CupertinoSegmentedControl<String>(
+            groupValue: _vm.selectedResolutionGroup,
+            selectedColor: Theme.of(context).colorScheme.primary,
+            unselectedColor: Colors.transparent,
+            borderColor: Colors.white24,
+            children: Map.fromEntries(
+              _vm.officialResolutionGroupLabels.map((g) => MapEntry(g, Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(g, style: const TextStyle(fontSize: 12)),
+              ))),
+            ),
+            onValueChanged: _vm.updateSelectedResolutionGroup,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _vm.selectedResolution,
-              icon: const Icon(CupertinoIcons.chevron_down, size: 16),
-              dropdownColor: const Color(0xFF1C1C21),
-              items: _vm.availableResolutions
-                  .map((r) => DropdownMenuItem(value: r, child: Text(_vm.resolutionLabel(r))))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) _vm.updateSelectedResolution(v);
-              },
+          const SizedBox(height: 8),
+          // 子按钮行：肖像/风景/方形
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _vm.currentGroupResolutionKeys.map((key) {
+              final isSelected = _vm.selectedResolution == '${ApiConstants.naiOfficialResolutionGroups[_vm.selectedResolutionGroup]![key]!['width']}x${ApiConstants.naiOfficialResolutionGroups[_vm.selectedResolutionGroup]![key]!['height']}';
+              return GestureDetector(
+                onTap: () => _vm.updateOfficialResolution(_vm.selectedResolutionGroup, key),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white24),
+                  ),
+                  child: Text(_vm.resolutionGroupLabelForKey(_vm.selectedResolutionGroup, key),
+                      style: TextStyle(fontSize: 12, color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white70)),
+                ),
+              );
+            }).toList(),
+          ),
+        ] else ...[
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _vm.selectedResolution,
+                icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+                dropdownColor: const Color(0xFF1C1C21),
+                items: _vm.availableResolutions
+                    .map((r) => DropdownMenuItem(value: r, child: Text(_vm.resolutionLabel(r))))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) _vm.updateSelectedResolution(v);
+                },
+              ),
             ),
           ),
-        ),
+        ],
         if (_vm.isNanoProvider) ...[
           const SizedBox(height: 16),
           Row(
@@ -1710,6 +1776,19 @@ class _GeneratePageState extends State<GeneratePage> {
           ],
         ),
         const SizedBox(height: 4),
+        // ─── Steps 步数（仅 Official） ───
+        if (_vm.isOfficialProvider) ...[
+          const SizedBox(height: 12),
+          _PremiumSlider(
+            label: '步数 (Steps)',
+            value: _vm.selectedSteps.toDouble(),
+            min: 1,
+            max: 50,
+            divisions: 49,
+            onChanged: (v) => _vm.updateSteps(v.round()),
+          ),
+          const SizedBox(height: 12),
+        ],
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             trackHeight: 6,

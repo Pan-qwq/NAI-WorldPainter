@@ -102,6 +102,29 @@ class ApiConstants {
   // ===== NovelAI 官方 API =====
   static const String naiOfficialBaseUrl = 'https://image.novelai.net';
 
+  /// NovelAI 官方 API 支持的画幅分组（V4.5 按尺寸分类）
+  static const Map<String, Map<String, Map<String, int>>> naiOfficialResolutionGroups = {
+    '小型': {
+      '肖像': {'width': 512, 'height': 768},
+      '风景': {'width': 768, 'height': 512},
+      '方形': {'width': 640, 'height': 640},
+    },
+    '普通': {
+      '肖像': {'width': 832, 'height': 1216},
+      '风景': {'width': 1216, 'height': 832},
+      '方形': {'width': 1024, 'height': 1024},
+    },
+    '壁纸': {
+      '肖像': {'width': 1088, 'height': 1920},
+      '风景': {'width': 1920, 'height': 1088},
+    },
+    '大型': {
+      '肖像': {'width': 1024, 'height': 1536},
+      '风景': {'width': 1536, 'height': 1024},
+      '广场': {'width': 1472, 'height': 1472},
+    },
+  };
+
   /// NovelAI 官方 API 支持的画幅（比中转站多得多）
   static const Map<String, Map<String, int>> naiOfficialSupportedResolutions = {
     '384x640': {'width': 384, 'height': 640},
@@ -135,6 +158,7 @@ class ApiConstants {
   static const String naiOfficialTxt2Img = '/ai/generate-image';
   static const String naiOfficialImg2Img = '/ai/generate-image';
   static const String naiOfficialUpload = '/ai/upload-image';
+  static const String naiOfficialSubscription = '/ai/user/subscription';
 
   /// NovelAI 官方 API 支持的模型（不含中转站自定义模型）
   static const List<String> naiOfficialModels = [

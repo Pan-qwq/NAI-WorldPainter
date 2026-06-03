@@ -224,6 +224,7 @@ class AppConstants {
   // ===== NovelAI 官方 API =====
   static const String keyNovelAiOfficialApiKey = 'novelai_official_api_key';
 
+  static const String keyStepsDraft = 'steps_draft';
   static const String keyBatchCount = 'batch_count_draft';
 
   // 任务状态

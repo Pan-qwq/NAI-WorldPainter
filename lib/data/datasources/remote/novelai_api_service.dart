@@ -559,9 +559,7 @@ class NovelAiApiService {
       'cfg_rescale': task.cfgRescale,
       'sampler': task.sampler,
       'noise_schedule': task.noiseSchedule,
-      'steps': task.mode == GenerationMode.inpainting
-          ? ApiConstants.defaultInpaintingSteps
-          : ApiConstants.defaultSteps,
+      'steps': task.steps,
       'n_samples': 1,
       if (task.seed != null) 'seed': task.seed,
       if (task.negativePrompt != null && task.negativePrompt!.isNotEmpty)
@@ -760,6 +758,23 @@ class NovelAiApiService {
       return response.statusCode == 200;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// 查询 NovelAI 订阅 Anlas 余额
+  Future<int> fetchAnlasBalance(String apiKey) async {
+    _configureOfficialAuth(apiKey);
+    try {
+      final response = await _officialDio.get(
+        ApiConstants.naiOfficialSubscription,
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      final data = response.data as Map<String, dynamic>;
+      // NAI 返回: {"training": <anlas余额>}
+      return (data['training'] as num?)?.toInt() ?? 0;
+    } on DioException catch (e) {
+      _addLog('[余额查询失败] ${_handleDioError(e)}');
+      return -1;
     }
   }
 

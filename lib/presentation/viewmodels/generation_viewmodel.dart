@@ -66,7 +66,14 @@ class GenerationViewModel extends ChangeNotifier {
   String selectedNoiseSchedule = 'native';
   int? seed;
   int? appliedSeed;
+  int selectedSteps = ApiConstants.defaultSteps;
+  String selectedResolutionGroup = '普通';
   List<CharacterSpec> characters = [];
+
+  // Anlas 余额
+  int? currentAnlasBalance;
+  int? lastConsumedAnlas;
+  int? _anlasBalanceBefore;
   List<NaiModel> models = [];
   List<ImageModelOption> imageModelOptions = [];
 
@@ -81,6 +88,43 @@ class GenerationViewModel extends ChangeNotifier {
   bool get isNanoProvider => currentProvider == ImageProviderType.nanoBanana;
   bool get isOfficialProvider => currentProvider == ImageProviderType.novelAiOfficial;
   bool get isNonNovelAiProvider => isGptProvider || isNanoProvider;
+
+  // ─── 画幅分组（仅 Official） ───
+  List<String> get officialResolutionGroupLabels =>
+      ApiConstants.naiOfficialResolutionGroups.keys.toList();
+
+  List<String> get currentGroupResolutionKeys {
+    if (!isOfficialProvider) return [];
+    final group = ApiConstants.naiOfficialResolutionGroups[selectedResolutionGroup];
+    if (group == null) return [];
+    return group.keys.toList();
+  }
+
+  String resolutionGroupLabelForKey(String group, String key) {
+    final dims = ApiConstants.naiOfficialResolutionGroups[group]?[key];
+    if (dims == null) return key;
+    return '$key ${dims['width']}×${dims['height']}';
+  }
+
+  void updateSelectedResolutionGroup(String group) {
+    selectedResolutionGroup = group;
+    // 自动选中该分组的第一项
+    final firstKey = ApiConstants.naiOfficialResolutionGroups[group]?.keys.first;
+    if (firstKey != null) {
+      final dims = ApiConstants.naiOfficialResolutionGroups[group]![firstKey]!;
+      selectedResolution = '${dims['width']}x${dims['height']}';
+      _manageSettings.setSelectedResolutionDraft(selectedResolution);
+    }
+    notifyListeners();
+  }
+
+  void updateOfficialResolution(String group, String key) {
+    final dims = ApiConstants.naiOfficialResolutionGroups[group]?[key];
+    if (dims == null) return;
+    selectedResolution = '${dims['width']}x${dims['height']}';
+    _manageSettings.setSelectedResolutionDraft(selectedResolution);
+    notifyListeners();
+  }
 
   List<String> get availableResolutions {
     if (isGptProvider) return ApiConstants.gptSupportedSizes;
@@ -154,6 +198,18 @@ class GenerationViewModel extends ChangeNotifier {
     _listenQueue();
   }
 
+  /// 加载官方 Anlas 余额
+  Future<void> loadAnlasBalance() async {
+    if (!isOfficialProvider) return;
+    final key = await _manageSettings.getNovelAiOfficialApiKey();
+    if (key == null || key.isEmpty) return;
+    final balance = await _manageSettings.fetchAnlasBalance(key);
+    if (balance >= 0) {
+      currentAnlasBalance = balance;
+      notifyListeners();
+    }
+  }
+
   Future<void> _loadDefaults() async {
     selectedModel = await _manageSettings.getSelectedModelDraft() ?? await _manageSettings.getDefaultModel() ?? '';
     selectedResolution = await _manageSettings.getSelectedResolutionDraft();
@@ -167,6 +223,7 @@ class GenerationViewModel extends ChangeNotifier {
     inpaintNegativePrompt = await _manageSettings.getInpaintNegativePromptDraft();
     characters = await _manageSettings.getCharactersDraft();
     batchCount = await _manageSettings.getBatchCount();
+    selectedSteps = await _manageSettings.getStepsDraft();
     notifyListeners();
   }
 
@@ -476,6 +533,10 @@ class GenerationViewModel extends ChangeNotifier {
       generationMode = GenerationMode.textToImage;
     }
     notifyListeners();
+    // 切换模型后刷新余额
+    if (isOfficialProvider) {
+      loadAnlasBalance();
+    }
   }
 
   Future<void> _ensureResolutionForCurrentProvider() async {
@@ -590,6 +651,13 @@ class GenerationViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Steps 步数
+  void updateSteps(int value) {
+    selectedSteps = value.clamp(1, 50);
+    _manageSettings.setStepsDraft(selectedSteps);
+    notifyListeners();
+  }
+
   Future<void> generate() async {
     // 重入守卫：批量生成中再次按下"生成"按钮（或被并发触发）直接忽略，
     // 避免两套 for 循环并行入队导致超过设定张数。
@@ -663,9 +731,16 @@ class GenerationViewModel extends ChangeNotifier {
       inpaintStrength: generationMode == GenerationMode.inpainting ? inpaintStrength : null,
       responseFormat: generationMode == GenerationMode.inpainting ? 'url' : null,
       providerType: provider,
+      steps: generationMode == GenerationMode.inpainting
+          ? selectedSteps.clamp(1, 50)
+          : selectedSteps.clamp(1, 50),
     );
 
     errorMessage = null;
+    // 记录生成前余额
+    if (isOfficialProvider) {
+      _anlasBalanceBefore = currentAnlasBalance;
+    }
     // 重置批次结果区
     sessionResults = [];
     selectedResultTaskId = null;
@@ -703,6 +778,16 @@ class GenerationViewModel extends ChangeNotifier {
       }
     } finally {
       await BackgroundKeepAliveService.instance.release();
+      // 生成完成后查询余额变化
+      if (isOfficialProvider && _anlasBalanceBefore != null) {
+        final after = await loadAnlasBalance();
+        if (currentAnlasBalance != null && _anlasBalanceBefore != null) {
+          final diff = _anlasBalanceBefore! - currentAnlasBalance!;
+          if (diff > 0) lastConsumedAnlas = diff;
+        }
+        _anlasBalanceBefore = null;
+        notifyListeners();
+      }
     }
   }
 

@@ -41,6 +41,7 @@ class GenerationTask extends Equatable {
   final ImageProviderType providerType;
   final List<String>? gptImagePaths;
   final String? nanoImageSize;
+  final int steps;
 
   const GenerationTask({
     this.id,
@@ -71,6 +72,7 @@ class GenerationTask extends Equatable {
     this.providerType = ImageProviderType.novelAi,
     this.gptImagePaths,
     this.nanoImageSize,
+    this.steps = ApiConstants.defaultSteps,
   });
 
   GenerationTask copyWith({
@@ -102,6 +104,7 @@ class GenerationTask extends Equatable {
     ImageProviderType? providerType,
     List<String>? gptImagePaths,
     String? nanoImageSize,
+    int? steps,
   }) {
     return GenerationTask(
       id: id ?? this.id,
@@ -132,6 +135,7 @@ class GenerationTask extends Equatable {
       providerType: providerType ?? this.providerType,
       gptImagePaths: gptImagePaths ?? this.gptImagePaths,
       nanoImageSize: nanoImageSize ?? this.nanoImageSize,
+      steps: steps ?? this.steps,
     );
   }
 

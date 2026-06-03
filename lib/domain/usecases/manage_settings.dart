@@ -147,6 +147,13 @@ class ManageSettingsUseCase {
   Future<bool> testConnectionOfficial(String apiKey, {String? proxyHost, int? proxyPort}) =>
       _repo.testConnectionOfficial(apiKey, proxyHost: proxyHost, proxyPort: proxyPort);
 
+  // ===== Steps 步数 =====
+  Future<int> getStepsDraft() => _repo.getStepsDraft();
+  Future<void> setStepsDraft(int value) => _repo.setStepsDraft(value);
+
+  // ===== Anlas 余额 =====
+  Future<int> fetchAnlasBalance(String apiKey) => _repo.fetchAnlasBalance(apiKey);
+
   // 批量生成
   Future<int> getBatchCount() => _repo.getBatchCount();
   Future<void> setBatchCount(int value) => _repo.setBatchCount(value);

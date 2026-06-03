@@ -291,6 +291,19 @@ class SettingsRepositoryImpl implements SettingsRepository {
     return _apiService!.testConnectionOfficial(apiKey);
   }
 
+  // ===== Steps =====
+  @override
+  Future<int> getStepsDraft() async => _local.getStepsDraft();
+  @override
+  Future<void> setStepsDraft(int value) => _local.setStepsDraft(value);
+
+  // ===== Anlas 余额 =====
+  @override
+  Future<int> fetchAnlasBalance(String apiKey) async {
+    if (_apiService == null) return -1;
+    return _apiService!.fetchAnlasBalance(apiKey);
+  }
+
   // ===== 批量生成 =====
   @override
   Future<int> getBatchCount() async => _local.getBatchCount();

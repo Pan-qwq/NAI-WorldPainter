@@ -144,6 +144,13 @@ abstract class SettingsRepository {
   Future<void> setNovelAiOfficialApiKey(String value);
   Future<bool> testConnectionOfficial(String apiKey, {String? proxyHost, int? proxyPort});
 
+  // ===== Steps =====
+  Future<int> getStepsDraft();
+  Future<void> setStepsDraft(int value);
+
+  // ===== Anlas 余额 =====
+  Future<int> fetchAnlasBalance(String apiKey);
+
   // 批量生成
   Future<int> getBatchCount();
   Future<void> setBatchCount(int value);

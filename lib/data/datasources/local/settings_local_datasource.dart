@@ -342,6 +342,10 @@ class SettingsLocalDatasource {
   Future<void> setNovelAiOfficialApiKey(String value) async =>
       _prefs.setString(AppConstants.keyNovelAiOfficialApiKey, value);
 
+  // ===== Steps draft =====
+  int getStepsDraft() => _prefs.getInt(AppConstants.keyStepsDraft) ?? ApiConstants.defaultSteps;
+  Future<void> setStepsDraft(int value) async => _prefs.setInt(AppConstants.keyStepsDraft, value);
+
   // 批量生成数量
   int getBatchCount() => _prefs.getInt(AppConstants.keyBatchCount) ?? 1;
   Future<void> setBatchCount(int value) async {
