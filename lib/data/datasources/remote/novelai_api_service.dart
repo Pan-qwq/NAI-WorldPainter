@@ -772,13 +772,18 @@ class NovelAiApiService {
 
   /// 查询 NovelAI 订阅 Anlas 余额
   Future<int> fetchAnlasBalance(String apiKey) async {
-    _configureOfficialAuth(apiKey);
     try {
       final response = await _officialDio.get(
-        ApiConstants.naiOfficialSubscription,
+        '${ApiConstants.naiApiBaseUrl}/user/subscription',
         options: Options(
           receiveTimeout: const Duration(seconds: 15),
-          headers: {'Accept': 'application/json'},
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Origin': 'https://novelai.net',
+            'Referer': 'https://novelai.net',
+          },
         ),
       );
       final data = response.data;
@@ -792,7 +797,7 @@ class NovelAiApiService {
     } on DioException catch (e) {
       final errMsg = _handleDioError(e);
       _addLog('[余额查询失败] $errMsg');
-      print('[Anlas余额] 请求失败: $errMsg (status=${e.response?.statusCode})');
+      print('[Anlas余额] 请求失败: $errMsg (status=${e.response?.statusCode}, body=${e.response?.data})');
       return -3;
     }
   }

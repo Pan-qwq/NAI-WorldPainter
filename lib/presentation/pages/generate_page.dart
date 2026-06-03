@@ -1647,19 +1647,38 @@ class _GeneratePageState extends State<GeneratePage> {
               border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
             ),
             child: Row(
-              children: [
-                const Icon(Icons.monetization_on_outlined, size: 16, color: Colors.amber),
-                const SizedBox(width: 8),
-                Text('余额: ${_vm.currentAnlasBalance ?? "—"}',
-                    style: const TextStyle(fontSize: 13, color: Colors.amber)),
-                if (_vm.lastConsumedAnlas != null) ...[
-                  const SizedBox(width: 12),
-                  Text('-${_vm.lastConsumedAnlas}',
-                      style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
-                  const Text(' (本次消耗)', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                ],
-              ],
+          children: [
+            const Icon(Icons.monetization_on_outlined, size: 16, color: Colors.amber),
+            const SizedBox(width: 8),
+            Text('余额: ${_vm.currentAnlasBalance ?? "—"}',
+                style: const TextStyle(fontSize: 13, color: Colors.amber)),
+            if (_vm.lastConsumedAnlas != null) ...[
+              const SizedBox(width: 12),
+              Text('-${_vm.lastConsumedAnlas}',
+                  style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+              const Text(' (本次消耗)', style: TextStyle(fontSize: 11, color: Colors.white54)),
+            ],
+            const Spacer(),
+            GestureDetector(
+              onTap: () => _vm.loadAnlasBalance(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.refresh, size: 14, color: Colors.amber),
+                    SizedBox(width: 4),
+                    Text('刷新', style: TextStyle(fontSize: 11, color: Colors.amber)),
+                  ],
+                ),
+              ),
             ),
+          ],
+        ),
           ),
           const SizedBox(height: 16),
         ],

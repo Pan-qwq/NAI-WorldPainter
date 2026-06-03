@@ -101,6 +101,7 @@ class ApiConstants {
 
   // ===== NovelAI 官方 API =====
   static const String naiOfficialBaseUrl = 'https://image.novelai.net';
+  static const String naiApiBaseUrl = 'https://api.novelai.net';
 
   /// NovelAI 官方 API 支持的画幅分组（V4.5 按尺寸分类）
   static const Map<String, Map<String, Map<String, int>>> naiOfficialResolutionGroups = {
