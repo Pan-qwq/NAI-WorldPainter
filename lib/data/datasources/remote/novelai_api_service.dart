@@ -6,14 +6,16 @@ import 'package:dio/dio.dart';
 import 'package:image/image.dart' as img;
 import 'package:nai_huishi/core/constants/api_constants.dart';
 import 'package:nai_huishi/core/errors/exceptions.dart';
+import 'package:nai_huishi/core/network/robust_http_adapter.dart';
 import 'package:nai_huishi/core/utils/image_utils.dart';
 import 'package:nai_huishi/domain/entities/generation_task.dart';
 import 'package:nai_huishi/domain/entities/nai_model.dart';
 
 class NovelAiApiService {
   final Dio _dio;
+  final Dio _officialDio;
 
-  NovelAiApiService(this._dio);
+  NovelAiApiService(this._dio) : _officialDio = createSimpleDio();
 
   void _configureAuth(String apiKey, String baseUrl) {
     final normalizedBaseUrl = _normalizeBaseUrl(baseUrl);
@@ -21,6 +23,18 @@ class NovelAiApiService {
     _dio.options.headers['Authorization'] = 'Bearer $apiKey';
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.options.headers['Accept'] = 'application/json';
+  }
+
+  /// 配置官方 API 专用 Dio（使用系统 DNS，不经过 DoH）
+  void _configureOfficialAuth(String apiKey) {
+    _officialDio.options.baseUrl = ApiConstants.naiOfficialBaseUrl;
+    _officialDio.options.headers['Authorization'] = 'Bearer $apiKey';
+    _officialDio.options.headers['Content-Type'] = 'application/json';
+    // 官方 API 返回 ZIP 二进制，告知服务器需要该格式
+    _officialDio.options.headers['Accept'] = 'application/zip';
+    // 反滥用校验
+    _officialDio.options.headers['Origin'] = 'https://novelai.net';
+    _officialDio.options.headers['Referer'] = 'https://novelai.net';
   }
 
   String _normalizeBaseUrl(String baseUrl) {
@@ -438,11 +452,11 @@ class NovelAiApiService {
     GenerationTask task,
     String apiKey,
   ) async {
-    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+    _configureOfficialAuth(apiKey);
 
     try {
       final body = _buildOfficialBody(task);
-      final response = await _dio.post(
+      final response = await _officialDio.post(
         ApiConstants.naiOfficialTxt2Img,
         data: body,
         options: Options(
@@ -467,7 +481,7 @@ class NovelAiApiService {
     GenerationTask task,
     String apiKey,
   ) async {
-    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+    _configureOfficialAuth(apiKey);
 
     try {
       // 先上传原图
@@ -481,7 +495,7 @@ class NovelAiApiService {
       }
 
       final body = _buildOfficialBody(task, imageUuid: uploadUuid, maskUuid: maskUuid);
-      final response = await _dio.post(
+      final response = await _officialDio.post(
         ApiConstants.naiOfficialImg2Img,
         data: body,
         options: Options(
@@ -503,13 +517,13 @@ class NovelAiApiService {
 
   /// 上传图片到 NAI 官方，返回 uuid
   Future<String> _uploadImageOfficial(List<int> imageBytes, String apiKey) async {
-    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+    _configureOfficialAuth(apiKey);
 
     final formData = FormData.fromMap({
       'image': MultipartFile.fromBytes(imageBytes, filename: 'image.png'),
     });
 
-    final response = await _dio.post(
+    final response = await _officialDio.post(
       ApiConstants.naiOfficialUpload,
       data: formData,
       options: Options(
@@ -649,9 +663,9 @@ class NovelAiApiService {
 
   /// 测试 NAI 官方连接
   Future<bool> testConnectionOfficial(String apiKey) async {
-    _configureAuth(apiKey, ApiConstants.naiOfficialBaseUrl);
+    _configureOfficialAuth(apiKey);
     try {
-      final response = await _dio.post(
+      final response = await _officialDio.post(
         ApiConstants.naiOfficialTxt2Img,
         data: {
           'input': 'test',
@@ -661,19 +675,19 @@ class NovelAiApiService {
             'width': 832,
             'height': 1216,
             'scale': 5.0,
-            'steps': 1,
+            'steps': 28,
             'n_samples': 1,
             'quality_toggle': false,
             'prefer_brownian': false,
           },
         },
         options: Options(
-          receiveTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 30),
           responseType: ResponseType.bytes,
         ),
       );
       return response.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }

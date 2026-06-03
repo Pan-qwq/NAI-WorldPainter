@@ -44,6 +44,32 @@ Dio createRobustDio() {
   return dio;
 }
 
+/// 创建一个不经过 DoH、使用系统 DNS 的简单 Dio 实例
+/// 用于 NovelAI 官方 API 等直连场景（避免 DoH 绕过 VPN DNS）
+Dio createSimpleDio() {
+  final dio = Dio();
+
+  dio.interceptors.add(InterceptorsWrapper(
+    onRequest: (options, handler) {
+      debugPrint('[网络日志] >>> ${options.method} ${options.baseUrl}${options.path}');
+      handler.next(options);
+    },
+    onResponse: (response, handler) {
+      debugPrint('[网络日志] <<< ${response.statusCode} ${response.requestOptions.baseUrl}${response.requestOptions.path}');
+      handler.next(response);
+    },
+    onError: (error, handler) {
+      debugPrint('[网络日志] !!! ${error.type} ${error.message}');
+      debugPrint('[网络日志]   url: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
+      debugPrint('[网络日志]   status: ${error.response?.statusCode}');
+      debugPrint('[网络日志]   response: ${error.response?.data}');
+      handler.next(error);
+    },
+  ));
+
+  return dio;
+}
+
 /// 用 DoH 解析域名，然后 IPv4 优先连接
 /// 对于 https 请求，用 SecureSocket 包装并设置正确 SNI
 Future<ConnectionTask<Socket>> _createDohConnection(
