@@ -51,18 +51,43 @@ Dio createSimpleDio() {
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) {
-      debugPrint('[网络日志] >>> ${options.method} ${options.baseUrl}${options.path}');
+      debugPrint('[官方Dio] >>> ${options.method} ${options.baseUrl}${options.path}');
+      debugPrint('[官方Dio]     headers: ${options.headers}');
+      if (options.data is Map) {
+        final data = options.data as Map;
+        // 截断过长内容
+        final truncated = data.map((k, v) => MapEntry(k, v is String && v.length > 200 ? '${v.substring(0, 200)}...' : v));
+        debugPrint('[官方Dio]     body: $truncated');
+      }
       handler.next(options);
     },
     onResponse: (response, handler) {
-      debugPrint('[网络日志] <<< ${response.statusCode} ${response.requestOptions.baseUrl}${response.requestOptions.path}');
+      debugPrint('[官方Dio] <<< ${response.statusCode} (${response.requestOptions.baseUrl}${response.requestOptions.path})');
+      debugPrint('[官方Dio]     headers: ${response.headers}');
+      if (response.data is List<int>) {
+        debugPrint('[官方Dio]     body bytes: ${(response.data as List<int>).length}');
+      } else if (response.data is Map) {
+        debugPrint('[官方Dio]     body: ${response.data}');
+      } else if (response.data is String) {
+        debugPrint('[官方Dio]     body: ${(response.data as String).length > 300 ? '${(response.data as String).substring(0, 300)}...' : response.data}');
+      }
       handler.next(response);
     },
     onError: (error, handler) {
-      debugPrint('[网络日志] !!! ${error.type} ${error.message}');
-      debugPrint('[网络日志]   url: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
-      debugPrint('[网络日志]   status: ${error.response?.statusCode}');
-      debugPrint('[网络日志]   response: ${error.response?.data}');
+      debugPrint('[官方Dio] !!! ${error.type}');
+      debugPrint('[官方Dio]     url: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
+      debugPrint('[官方Dio]     status: ${error.response?.statusCode}');
+      if (error.response?.data is List<int>) {
+        try {
+          final bodyStr = String.fromCharCodes(error.response!.data as List<int>);
+          debugPrint('[官方Dio]     response body: $bodyStr');
+        } catch (_) {
+          debugPrint('[官方Dio]     response body bytes: ${(error.response!.data as List<int>).length}');
+        }
+      } else {
+        debugPrint('[官方Dio]     response body: ${error.response?.data}');
+      }
+      debugPrint('[官方Dio]     message: ${error.message}');
       handler.next(error);
     },
   ));

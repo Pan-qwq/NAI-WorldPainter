@@ -609,9 +609,9 @@ class NovelAiApiService {
       params['mask'] = maskUuid;
     }
 
-    // prefer_brownian / quality_toggle 必须放在 parameters 内部
+    // prefer_brownian / qualityToggle 必须放在 parameters 内部
     params['prefer_brownian'] = true;
-    params['quality_toggle'] = true;
+    params['qualityToggle'] = true;
 
     return {
       'input': task.prompt,
@@ -719,7 +719,7 @@ class NovelAiApiService {
             'scale': 5.0,
             'steps': 28,
             'n_samples': 1,
-            'quality_toggle': false,
+            'qualityToggle': false,
             'prefer_brownian': false,
             // V4 必需
             'params_version': 3,
@@ -760,11 +760,23 @@ class NovelAiApiService {
         final statusCode = e.response?.statusCode;
         final body = e.response?.data;
         if (statusCode == 401) return 'API Key 无效或已过期';
-        if (statusCode == 402) return '额度不足';
+        if (statusCode == 402) return '额度不足 (Anlas)';
         if (statusCode == 429) return '请求过于频繁，请稍后再试';
         if (statusCode == 500) return '服务器内部错误';
-        if (body is Map) return body['error']?['message']?.toString() ?? '请求失败 ($statusCode)';
-        return '请求失败 ($statusCode)';
+        // 尝试提取 NAI 错误消息体（可能为 bytes 或 JSON）
+        String bodyMsg = '';
+        if (body is Map) {
+          bodyMsg = body['error']?['message']?.toString() ?? body.toString();
+        } else if (body is List<int> && body.length < 500) {
+          try {
+            bodyMsg = utf8.decode(body);
+          } catch (_) {
+            bodyMsg = '(${body.length} bytes)';
+          }
+        } else if (body != null) {
+          bodyMsg = body.toString();
+        }
+        return '请求失败 ($statusCode): $bodyMsg';
       case DioExceptionType.connectionError:
         return '无法连接到服务器，请检查 Base URL';
       default:
